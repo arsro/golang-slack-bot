@@ -3,37 +3,79 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 
 	"golang_slack_bot/config"
 )
 
+const ()
+
 type Slack struct {
-	Text       string `json:"text"`       //投稿内容
-	Username   string `json:"username"`   //投稿者名 or Bot名（存在しなくてOK）
-	Icon_emoji string `json:"icon_emoji"` //アイコン絵文字
-	Icon_url   string `json:"icon_url"`   //アイコンURL（icon_emojiが存在する場合は、適応されない）
-	Channel    string `json:"channel"`    //#部屋名
+	Text      string `json:"text"`
+	Username  string `json:"username"`
+	IconEmoji string `json:"icon_emoji"`
+	IconUrl   string `json:"icon_url"`
+	Channel   string `json:"channel"`
 }
 
 func main() {
-	slack := &Slack{
-		"Hello World",
-		"slack bot",
-		"",
-		"http://www.ensky.co.jp/item/images/save/07151842_53c4f7839cd4e.jpg",
+
+	sp := createSlackClient()
+	sp.setPostParamter(
+		"hogehoge",
+		"test",
+		"https://applets.imgix.net/https%3A%2F%2Fassets.ifttt.com%2Fimages%2Fchannels%2F2107379463%2Ficons%2Fon_color_large.png%3Fversion%3D0?ixlib=rails-2.1.3&w=240&h=240&auto=compress&s=07c1117d9e046c1a26150728429d62db",
 		"#memo",
+	)
+	response, err := sp.sendMessage("")
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println(response)
+}
+
+func createSlackClient() *Slack {
+	sp := &Slack{}
+	return sp
+}
+
+func (sp *Slack) setPostParamter(msg string, bot_name string, icon_url string, channel string) {
+	sp.Text = msg
+	sp.Username = bot_name
+	if icon_url == "" {
+		sp.IconEmoji = ":japanese_goblin:"
+	} else {
+		sp.IconUrl = icon_url
+	}
+	sp.Channel = channel
+}
+
+func (sp *Slack) sendMessage(incomming_webhook_url string) (string, error) {
+	params, err := json.Marshal(*sp)
+	if err != nil {
+		return "", err
 	}
 
-	params, _ := json.Marshal(*slack)
+	// config.IncomingUrl を slackのincomming webhookのurlを設定
+	if incomming_webhook_url == "" {
+		incomming_webhook_url = config.IncomingUrl
+	}
+	payload := string(string(params))
+	post_value := url.Values{"payload": {payload}}
+
+	// post
 	resp, _ := http.PostForm(
-		config.IncomingUrl,
-		url.Values{"payload": {string(params)}},
+		incomming_webhook_url,
+		post_value,
 	)
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	defer resp.Body.Close()
 
-	println(string(body))
+	return string(body), nil
 }
