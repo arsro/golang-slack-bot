@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -15,19 +17,41 @@ type Slack struct {
 	Channel   string `json:"channel"`
 }
 
+func main() {
+
+	sp := createSlackClient()
+	err := sp.setPostParamter(
+		"test",
+		":octocat:",
+		"",
+		"#memo",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	response, err := sp.sendMessage("Hello World!", "https://hooks.slack.com/services/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")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(response)
+}
+
 func createSlackClient() *Slack {
 	sp := &Slack{}
 	return sp
 }
 
-func (sp *Slack) setPostParamter(bot_name string, icon_url string, channel string) {
+func (sp *Slack) setPostParamter(bot_name string, icon_emoji string, icon_url string, channel string) error {
 	sp.Username = bot_name
-	if icon_url == "" {
-		sp.IconEmoji = ":japanese_goblin:"
-	} else {
-		sp.IconUrl = icon_url
-	}
+	sp.IconEmoji = icon_emoji
+	sp.IconUrl = icon_url
 	sp.Channel = channel
+
+	if icon_url == "" && icon_emoji == "" {
+		return errors.New("invalid params")
+	}
+	return nil
 }
 
 func (sp *Slack) sendMessage(msg string, incomming_webhook_url string) (string, error) {
